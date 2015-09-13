@@ -9,7 +9,16 @@ while ($line = <>) {
     if ($line =~ /^#!/ && $. == 1) {
         print "#!/usr/bin/python2.7\n";
     } elsif ($line =~ /echo/) {
-        print "print 'hello world'\n";
+		#This should take echo and change it to print, and add quotation marks
+        $line =~ s/echo /print "/;
+		$line = $line . '"';
+		print "$line\n";
+	} elsif ($line =~ /ls/){
+		#This should change ls to glob	
+		print "import glob\n";
+		$line =~ s/ls /glob.glob\(\'/;
+		$line = $line."')";
+		print "$line\n";
     } else {
         # Lines we can't translate are turned into comments
         print "#$line\n";
