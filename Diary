@@ -1,3 +1,4 @@
 Date	  Start    Stop	   Activity	Comments 
 9/14/15	  1:49	   2:40	   Coding	Changed Echo, and added ls. Not sure if i'm 						doing this correctly.
-10/14/15  0:51	   	   Coding	Fixed ls, added pwd, time and ls -l to the 						same condition. Fixed up echo to work with 						variables, seems like subset 0 is done.
+10/14/15  0:51	   2:48	   Coding	Fixed ls, added pwd, time and ls -l to the 						same condition. Fixed up echo to work with 						variables, seems like subset 0 is done. 					Passed autoruns for subset 0
+
