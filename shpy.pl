@@ -4,21 +4,30 @@
 # as a starting point for COMP2041/9041 assignment 
 # http://cgi.cse.unsw.edu.au/~cs2041/assignment/shpy
 
+
+$import = 0;
 while ($line = <>) {
     chomp $line;
     if ($line =~ /^#!/ && $. == 1) {
-        print "#!/usr/bin/python2.7\n";
+        print "#!/usr/bin/python2.7 -u\n";
     } elsif ($line =~ /echo/) {
-		#This should take echo and change it to print, and add quotation marks
+        #This should take echo and change it to print, and add quotation marks
         $line =~ s/echo /print "/;
 		$line = $line . '"';
 		print "$line\n";
-	} elsif ($line =~ /ls/){
-		#This should change ls to glob	
-		print "import glob\n";
-		$line =~ s/ls /glob.glob\(\'/;
-		$line = $line."')";
+	} elsif ($line =~ /['ls''pwd''id''date']/){
+		#This should change ls to subprocess. 
+        #Changes whatever afterwards to join word by word.
+		if ( $import == 0){
+            print "import subprocess\n";
+            $import = 1;
+        }
+		my @words = split / /,$line;
+		$line =  "subprocess.call(['";
+		$line = $line.(join( "','", @words))."'])";
 		print "$line\n";
+    } elsif ($line =~ /.*=.*/){
+        #Handle Variable
     } else {
         # Lines we can't translate are turned into comments
         print "#$line\n";
