@@ -13,9 +13,17 @@ while ($line = <>) {
     } elsif ($line =~ /echo/) {
         #This should take echo and change it to print, and add quotation marks
         $line =~ s/echo /print "/;
-		$line = $line . '"';
-		print "$line\n";
-	} elsif ($line =~ /['ls''pwd''id''date']/){
+        if ($line =~ /\$+/){
+            $line =~ s/[\$\"]//g;
+            my @words = split / /,$line;
+            shift @words; 
+            $line = "print ".(join(", ", @words));
+            print "$line\n";
+        } else {
+    		$line = $line . '"';
+	    	print "$line\n";
+        }
+	} elsif ($line =~ /ls|pwd|id|date/){
 		#This should change ls to subprocess. 
         #Changes whatever afterwards to join word by word.
 		if ( $import == 0){
@@ -28,6 +36,9 @@ while ($line = <>) {
 		print "$line\n";
     } elsif ($line =~ /.*=.*/){
         #Handle Variable
+        my @words = split /=/,$line;
+        $line = join(" = \'", @words)."'";
+        print "$line\n";
     } else {
         # Lines we can't translate are turned into comments
         print "#$line\n";
