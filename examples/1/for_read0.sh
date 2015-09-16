@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 for n in one two three
 do

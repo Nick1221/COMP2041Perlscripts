@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 start=13
 if test $# -gt 0
 then

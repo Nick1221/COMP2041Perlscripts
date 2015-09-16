@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 if test -r /dev/null
 then
     echo a

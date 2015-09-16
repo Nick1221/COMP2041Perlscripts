@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 echo My first argument is $1
 echo My second argument is $2

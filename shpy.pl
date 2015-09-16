@@ -5,7 +5,7 @@
 # http://cgi.cse.unsw.edu.au/~cs2041/assignment/shpy
 
 
-$import = 0;
+my %import;
 $identation = 0;
 while ($line = <>) {
     chomp $line;
@@ -31,9 +31,9 @@ while ($line = <>) {
 	} elsif ($line =~ /ls|pwd|id|date/){
 		#This should change ls to subprocess. 
         #Changes whatever afterwards to join word by word.
-		if ( $import == 0){
+		if ( $importsub == 0){
             print "import subprocess\n";
-            $import = 1;
+            $importsub = 1;
         }
 		my @words = split / /,$line;
 		$line =  "subprocess.call(['";
@@ -48,11 +48,21 @@ while ($line = <>) {
 		my @object = split/in/, $line;
 		s{^\s+|\s+$}{}g foreach @object; #Removes trailing and leading whitespaces
 		$line = shift(@object)." in ";
-		my $tempvar = (shift(@object));
-		print "$tempvar\n";
+		my @tempvar = (split / /,shift(@object));
+		foreach $ele (@tempvar){ 
+			if ( $ele =~ m/[^0-9]/ ){
+				$ele = "'".$ele."'"
+			}
+		}
 		#Have to figure out how to add qutation marks to only words.
+		#Edit: Think it's sorted for now. Not sure if it'll work with other cases atm
+		$line = $line.(join( ", ", @tempvar)).":";
 		print "$line\n";
-		#$forloopc += 1;
+	} elsif ($line =~ /^cd/){
+		if ( $importos == 0){
+            print "import os\n";
+            $importos = 1;
+        }
 	} elsif ($line =~ /^$/){
 		#Fixing Empty line
 		print "\n";
