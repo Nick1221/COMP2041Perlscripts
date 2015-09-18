@@ -3,6 +3,7 @@
 
 
 foreach my $file (glob "examples/0/*.sh"){
+	print "Testing $file\n";
 	system("sh $file > sh.output");
 	my $shfile = $file;
 	$file =~ s/\.sh/\.py/;

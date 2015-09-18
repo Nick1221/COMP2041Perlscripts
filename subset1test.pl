@@ -3,9 +3,11 @@
 
 
 foreach my $file (glob "examples/1/*.sh"){
-	system("sh $file >sh.output");
+	print "Testing $file\n";
+	system("sh $file > sh.output");
 	my $shfile = $file;
 	$file =~ s/\.sh/\.py/;
+	$file =~ s/examples\/1\///;
 	system("./shpy.pl $shfile > $file");
 	system("python -u $file > py.output");
 	system("diff py.output sh.output && echo success");
