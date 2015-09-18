@@ -7,6 +7,7 @@
 
 my %import;
 $identation = 0;
+my @translated; 
 while ($line = <>) {
     chomp $line;
     if ($line =~ /^#!/ && $. == 1) {
@@ -27,23 +28,20 @@ while ($line = <>) {
         } else {
     		$line = $line . '"';
         }
-		print "$line\n";
+		push (@translated, $line);
 	} elsif ($line =~ /ls|pwd|id|date/){
 		#This should change ls to subprocess. 
         #Changes whatever afterwards to join word by word.
-		if ( $importsub == 0){
-            print "import subprocess\n";
-            $importsub = 1;
-        }
+        $import{"subprocess"} = 1;
 		my @words = split / /,$line;
 		$line =  "subprocess.call(['";
 		$line = $line.(join( "','", @words))."'])";
-		print "$line\n";
+		push (@translated, $line);
     } elsif ($line =~ /.*=.*/){
         #Handle Variable
         my @words = split /=/,$line;
         $line = join(" = \'", @words)."'";
-        print "$line\n";
+        push (@translated, $line);
 	} elsif ($line =~ /for .* in/){
 		my @object = split/in/, $line;
 		s{^\s+|\s+$}{}g foreach @object; #Removes trailing and leading whitespaces
@@ -57,15 +55,16 @@ while ($line = <>) {
 		#Have to figure out how to add qutation marks to only words.
 		#Edit: Think it's sorted for now. Not sure if it'll work with other cases atm
 		$line = $line.(join( ", ", @tempvar)).":";
-		print "$line\n";
+		push (@translated, $line);
 	} elsif ($line =~ /^cd/){
-		if ( $importos == 0){
-            print "import os\n";
-            $importos = 1;
-        }
+		$import{"os"} = 1;
+        $line =~ s/cd /os.chdir('/;
+        $line = $line."')";
+        push (@translated, $line);
 	} elsif ($line =~ /^$/){
 		#Fixing Empty line
-		print "\n";
+		$line = "\n";
+        push (@translated, $line);
 	} elsif ($line =~ /^do$/){
 		#There will be more added to accomodate other cases just for identation
 		$identation+=4;
@@ -74,6 +73,14 @@ while ($line = <>) {
 		$identation-=4;
     } else {
         # Lines we can't translate are turned into comments
-        print "#$line\n";
+        $line =  "#$line\n";
+        push (@translated, $line);
     }
 }
+#Subject to change
+$importline = "import ".(join(", ", sort(keys %import)));
+print "$importline\n";
+foreach my $ele (@translated){
+    print "$ele\n";
+}
+
