@@ -1,6 +1,7 @@
 Date	  Start    Stop	   Activity	Comments 
 14/9/15	  1:49	   2:40	   Coding	Changed Echo, and added ls. Not sure if i'm 						doing this correctly.
-15/9/15   0:51	   2:48	   Coding	Fixed ls, added pwd, time and ls -l to the 						same condition. Fixed up echo to work with 						variables, seems like subset 0 is done. 					Passed autoruns for subset 0
+15/9/15   0:51	   2:48	   Coding/Debug	Fixed ls, added pwd, time and ls -l to the 						same condition. Fixed up echo to work with 						variables, seems like subset 0 is done. 					Passed autoruns for subset 0
 16/9/15   1:29	   2:56	   Coding/Debug Seems to be breaking echo part when i started 						subset 1, revised the code to work a bit 						better. Still feel like this is horribly hard 						coded but what can you do :^). 	
 16/9/15   0:50	   2:01	   Coding/Debug	Wrote scripts to test subset0 and 1 though 						not working perfectly, fixed for, trying to 						use hashes for imports and doing cd. So far 						for and subset 0 works.
 19/9/15   1:02     3:09	   Coding/Debug Changed echo variables case to work for most 						general cases(Till proven incorrect), finally 						done imports, completed subset 0 and subset 						1. Code seems to be not too messy, matching 						all the .py files in examples. (Except for 1 						extra newline in some files, minor stuff 						really)
+20/9/15   22:49	   4:15    Coding/Debug Fixed a whole load of crap, some of it seems 						too hardcoded atm even though i tried 						accomodating for most common cases, done with 						subset 2 and working with subset 3. Seems to 						be going well, but the code is still 						horrible (Many things to be done to tidy up 						the codes). 
