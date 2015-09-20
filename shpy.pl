@@ -70,13 +70,25 @@ while ($line = <>) {
     } elsif ($line =~ /[a-zA-Z0-9]+=.*/){
         #Handle Variable
         my @words = split /=/,$line;
-		if ($words[1] =~ m/^\$.*/){
+		if ($words[1] =~ m/^\$[0-9]+/){
 			#means its a variable
 			$import{"sys"} = 1;
 			$words[1] =~ s/\$/sys.argv[/;
 			$words[1] = $words[1]."]";
 			$line = join(" = ", @words);
-		} else {
+        } elsif ($words[1] =~ m/^\$[a-zA-Z]+/){
+            $words[1] =~ s/\$//;
+            $line = join(" = ", @words);
+		} elsif ($words[1] =~ m/^\`.*\`/){
+            $words[1] =~ s/\`//g;
+            if ($words[1] =~ /expr/){
+                $words[1]=~s/.*expr //;        
+                $words[1] = expr($words[1]);
+            }
+            $line = join(" = ", @words);
+        } elsif ($words[1] =~ m/^[0-9]+/){
+            $line = join(" = ", @words);
+        } else {
 	        $line = join(" = \'", @words)."'";
 		}
         push (@translated, $line);
@@ -123,15 +135,19 @@ while ($line = <>) {
 		#print "$var\n";
 		$line = "$var = sys.stdin.readline().rstrip()";
 		push (@translated, $line);
-	} elsif ($line =~ /^if test|^elif test/){
+	} elsif ($line =~ /^if test|^elif test|^if \[/){
 		#rint "Doing ifs\n";
-		if ($line =~ /^if/){
+		if ($line =~ /if *\[.*\]$/){
+            $line =~ s/if \[ //;
+            $line =~ s/\]//;
+            $newline = "if ";
+        } elsif ($line =~ /^if test/){
 			$line =~ s/if test //;
 			$newline = "if ";
-		} elsif ($line =~ /^elif/){
+		} elsif ($line =~ /^elif test/){
 			$line =~ s/elif test //;
 			$newline = "elif ";
-		}
+		} 
 		if ($line =~ m/-r/){
 			$import{"os"} = 1;
 			$line =~ s/-r//;
@@ -141,7 +157,7 @@ while ($line = <>) {
 			$import{"os.path"} = 1;
 			$line =~ s/-d//;
 			$line =~ s{^\s+|\s+$}{}g;
-			$newline = $newline."os.path.isdir('".$line."'):"
+			$newline = $newline."os.path.isdir('".$line."'):";
 		} else {
 			my @vars = split/=/, $line;
 			s{^\s+|\s+$}{}g foreach @vars;
@@ -151,6 +167,22 @@ while ($line = <>) {
 			$newline = $newline.(join(" == ",@vars)).":";
 		}
 		push (@translated, $newline);
+    } elsif ($line =~ /^while/){
+        if ($line =~ /^while/){
+			$line =~ s/while test //;
+			$newline = "while ";
+		}
+        if ($line =~ /-le/){
+            my @vars = split/-le/, $line;
+            s{^\s+|\s+$}{}g foreach @vars;
+            foreach $ele (@vars){
+                $ele =~ s/\$//;
+                #there will be issues if its a string.
+                $ele = "int(".$ele.")";
+            }
+            $newline = $newline.(join(" <= ", @vars)).":";
+        }
+        push (@translated, $newline);
 	} elsif ($line =~ /^[\t\s]*else$/){
 		$line =~ s/else/else:/;
 		push (@translated, $line);
@@ -178,5 +210,22 @@ if (%import){ #If hash is empty dont do imports
 }
 foreach my $ele (@translated){
     print "$ele\n";
+}
+
+
+#Functions
+
+sub expr {
+    #Convert expr
+    my $expr = $_[0];
+    my @vars = split/ /, $expr;
+    foreach $ele (@vars){
+        if ($ele =~ /^\$.*/){
+            $ele =~ s/\$/int(/;
+            $ele = $ele.")";
+        } 
+    }
+    $expr = join(" ", @vars);
+    return $expr;
 }
 
