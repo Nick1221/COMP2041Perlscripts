@@ -300,7 +300,10 @@ sub expr {
         if ($ele =~ /^\$.*/){
             $ele =~ s/\$/int(/;
             $ele = $ele.")";
-        } 
+        } elsif ($ele =~ /^'[^']*'/){
+			$ele =~ s/^'//;
+			$ele =~ s/'$//;
+		}
     }
     $expr = join(" ", @vars);
     return $expr;
