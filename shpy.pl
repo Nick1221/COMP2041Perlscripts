@@ -258,7 +258,7 @@ while ($line = <>) {
 		push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^[\t\s]*else$/){
 		$line =~ s/else/else:/;
-		push (@translated, (" "x$identation).$line .$comment);
+		push (@translated, $line .$comment);
 	} elsif ($line =~ /^#/){
 		push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^[\t\s]*$/){
@@ -267,8 +267,7 @@ while ($line = <>) {
         push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^[\t\s]*do$|^[\t\s]*then$/){
 		#There will be more added to accomodate other cases just for identation
-		$identation+=4;
-		
+		$identation+=4;		
 	} elsif ($line =~ /^[\t\s]*done$|^[\t\s]*fi$/){
 		#There will be more added to accomodate other cases just for identation
 		$identation-=4;
