@@ -9,7 +9,7 @@ my %import;
 $identation = 0;
 my @translated; 
 while ($line = <>) {
-    chomp $line;
+    $line =~ s{^[\s\t]+|[\s\t]+$}{}g;
 	$comment = "";
 	if ($line =~ /[^\']\$\@|[^\']\$\#|[^\']\$[0-9]/){
 		$line = dolla($line);
@@ -111,7 +111,7 @@ while ($line = <>) {
 		} elsif ($words[1] =~ m/^\$\(\(/){
 			$words[1] =~ s/\$\(\(/expr /g;
 			$words[1] =~ s/\)\)//g;
-            if ($words[1] =~ /expr/){
+            if ($words[1] =~ /expr/){ 
                 $words[1]=~s/.*expr //;        
                 $words[1] = expr($words[1]);
             }
@@ -128,7 +128,7 @@ while ($line = <>) {
 	        $line = join(" = \'", @words)."'";
 		}
 		#print "$identation\n";
-        push (@translated, $line .$comment);
+        push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /for .* in/){
 		$line = dolla($line);
 		$line = basicop($line);
@@ -183,7 +183,7 @@ while ($line = <>) {
 			} else {
 				$line = "'".$line."'";
 			}
-			print "$line\n";
+			#print "$line\n";
 			
 			$newline = $newline1."os.access($line, os.R_OK):"
 		} elsif ($line =~ m/-d/){
@@ -380,7 +380,7 @@ sub basicop {
 		            $ele = "int(".$ele.")";
 				}
             }
-            $newline = $newline.(join(" = ", @vars)).":";
+            $newline = $newline.(join(" == ", @vars)).":";
 		} elsif ($line =~ /\-ne/){
 			my @vars = split/-ge/, $line;
             s{^\s+|\s+$}{}g foreach @vars;
