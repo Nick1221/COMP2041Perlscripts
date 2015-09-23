@@ -10,3 +10,4 @@ Date	  Start    Stop	   Activity	Comments
 22/9/15   11:30    2:03	   Coding/Debug Patched up subset 4, mainly fixing expr and 						$() and $(()), sorta confused about how that 						works, but atm it works fine with that. 					Series.sh left to do and also need to 						revisit old subsets and make sure the 						comments on spec is met.
 23/9/15   23:20    4:42	   Coding/Debug Starting to look thourgh edge cases and breaking 						code. Need to really revisit things since these 					edge cases are absolutely wrecking all that work.
 					Working through series, fixing positional params 						and conditional statements in while if and for.
+24/9/15   22:28

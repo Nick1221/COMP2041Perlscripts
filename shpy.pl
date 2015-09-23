@@ -11,7 +11,9 @@ my @translated;
 while ($line = <>) {
     chomp $line;
 	$comment = "";
-	$temparg = "";
+	if ($line =~ /[^\']\$\@|[^\']\$\#|[^\']\$[0-9]/){
+		$line = dolla($line);
+	}
 	if ($line =~ /.+[^\\\$\"]#.*/){ #Avoid the weird cases
 		my @comments = split/\#/,$line;
 		$comment = $comments[1];
@@ -44,7 +46,7 @@ while ($line = <>) {
 					$ele =~ s/\$//;
 				}
 			 }
-			 $line = (" "x$identation)."print ".(join(", ", @vars)); 
+			 $line = "print ".(join(", ", @vars)); 
 		} elsif ($line =~ /echo '.*'/){
 			$line =~ s/echo /print /;
 		} elsif ($line =~ /echo ".*"/){
@@ -53,7 +55,7 @@ while ($line = <>) {
 			$line =~ s/echo[\s$quote]/print $quote/;	
     		$line = $line . $quote;
         }
-		push (@translated, $line .$comment);
+		push (@translated, (" "x$identation).$line.$comment);
 	} elsif ($line =~ /^[\t\s]*ls|^[\t\s]*pwd|^[\t\s]*id|^[\t\s]*date/){
 		#This should change ls to subprocess. 
         #Changes whatever afterwards to join word by word.
@@ -64,15 +66,26 @@ while ($line = <>) {
 			$import{"sys"} = 1;
 			#print "$line\n";
 			$line =~ s/^\s+|\s+$//g;
-			my @words = split / /,$line;
-			$line =  "subprocess.call(['";
-			$line = $line.(join( "','", @words))."'] + ".$temparg .")";		
+			my @words = split /-las/,$line;
+			s{^\s+|\s+$}{}g foreach @words; 
+			my @vars = split/ /,$words[1];
+			s{^\s+|\s+$}{}g foreach @vars; #Removes trailing and leading whitespaces
+			#print "@words";
+			$line =  "subprocess.call(['ls', '-las']";
+			foreach $ele (@vars){
+				#print "$ele\n";
+				 if ($ele =~ m/^[\"]\$/){
+		            $ele =~ s/[\"]\$//;
+					$ele =~ s/[\"]//;
+				}
+			}
+			$line = $line." + ".join(" + ", @vars).")";		
 		} else {
 			my @words = split / /,$line;
 			$line =  "subprocess.call(['";
 			$line = $line.(join( "','", @words))."'])";
 		}
-		push (@translated, $line .$comment);
+		push (@translated, (" "x$identation).$line .$comment);
     } elsif ($line =~ /[a-zA-Z0-9]+=.*/){
         #Handle Variable
 		$line = dolla($line);
@@ -114,6 +127,7 @@ while ($line = <>) {
         } else {
 	        $line = join(" = \'", @words)."'";
 		}
+		#print "$identation\n";
         push (@translated, $line .$comment);
 	} elsif ($line =~ /for .* in/){
 		$line = dolla($line);
@@ -142,45 +156,62 @@ while ($line = <>) {
 		#Edit: Think it's sorted for now. Not sure if it'll work with other cases atm
 		    $line = $line.(join( ", ", @tempvar)).":";  
         }
-		push (@translated, $line .$comment);
-	} elsif ($line =~ /^if test|^elif test|^if \[/){
-
+		push (@translated, (" "x$identation).$line .$comment);
+	} elsif ($line =~ /if test|elif test|if \[/){
+		#print "$line\n";
+			
 		#rint "Doing ifs\n";
 		if ($line =~ /if *\[.*\]$/){
             $line =~ s/if \[ //;
             $line =~ s/\]//;
-            $newline = "if ";
-        } elsif ($line =~ /^if test/){
+            $newline1 = "if ";
+        } elsif ($line =~ /if test/){
 			$line =~ s/if test //;
-			$newline = "if ";
+			$newline1 = "if ";
 			#print "$line\n";
-		} elsif ($line =~ /^elif test/){
+		} elsif ($line =~ /elif test/){
 			$line =~ s/elif test //;
-			$newline = "elif ";
+			$newline1 = "elif ";
 		} 
+		$line = dolla($line);
 		if ($line =~ m/-r/){
 			$import{"os"} = 1;
 			$line =~ s/-r//;
 			$line =~ s{^\s+|\s+$}{}g;
-			$newline = $newline."os.access('".$line."', os.R_OK):"
+			if ($line =~ /\$.*/){
+				$line =~ s/\$//;
+			} else {
+				$line = "'".$line."'";
+			}
+			print "$line\n";
+			
+			$newline = $newline1."os.access($line, os.R_OK):"
 		} elsif ($line =~ m/-d/){
 			$import{"os.path"} = 1;
 			$line =~ s/-d//;
 			$line =~ s{^\s+|\s+$}{}g;
-			$newline = $newline."os.path.isdir('".$line."'):";
+			$newline = $newline1."os.path.isdir('".$line."'):";	
+		} elsif ($line =~ m/\-../){
+			$line = basicop($line);
+			$newline = $newline1.$line;
 		} else {
+			#print "$newline\n";
 			my @vars = split/=/, $line;
 			s{^\s+|\s+$}{}g foreach @vars;
 			foreach $ele (@vars){ 
-				$ele = "'".$ele."'";
+				if ($ele =~ m/^\$[^\#\@]/){
+		            $ele =~ s/\$//;
+				} else {
+					$ele = "'".$ele."'";
+				}
 			}
-			$newline = $newline.(join(" == ",@vars)).":";
+			$newline = $newline1.(join(" == ",@vars)).":";
 		}
-		#$line = basicop($line);
+		
 		#print "$line\n";
-		#$line = dolla($line);
+		#
 		#$line = "if ".$line;
-		#push (@translated, $line .$comment);
+		push (@translated, (" "x$identation).$newline .$comment);
     } elsif ($line =~ /^while/){
 		if ($line =~ /^while test/){		
 			$line =~ s/while test //;
@@ -194,25 +225,25 @@ while ($line = <>) {
 		$line = dolla($line);
 		$line = basicop($line);
 		$line = "while ".$line;
-        push (@translated, $line.$comment);
+        push (@translated, (" "x$identation).$line.$comment);
 	} elsif ($line =~ /^[\t\s]*cd/){
 		$import{"os"} = 1;
         $line =~ s/cd /os.chdir('/;
         $line = $line."')";
-        push (@translated, $line .$comment);
+        push (@translated, (" "x$identation).$line .$comment);
     } elsif ($line =~ /^[\t\s]*exit/){
         $import{"sys"} = 1;
         $line =~ s/exit /sys.exit(/;
         $line = $line . ")";
         $line = $line."   #".$comment;
-		push (@translated, $line .$comment);
+		push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^[\t\s]*read/){
 		$import{"sys"} = 1;
 		$line =~ s/read //;
 		my $var = $line;
 		#print "$var\n";
 		$line = "$var = sys.stdin.readline().rstrip()";
-		push (@translated, $line .$comment);
+		push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^rm/){
 		my @var = split/ /, $line;
 		foreach $ele (@var){
@@ -224,26 +255,27 @@ while ($line = <>) {
 			}
 		}
 		$line = "subprocess.call([".(join(", ", @var))."])";
-		push (@translated, $line .$comment);
+		push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^[\t\s]*else$/){
 		$line =~ s/else/else:/;
-		push (@translated, $line .$comment);
+		push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^#/){
-		push (@translated, $line .$comment);
+		push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^[\t\s]*$/){
 		#Fixing Empty line
 		$line = "";
-        push (@translated, $line .$comment);
+        push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^[\t\s]*do$|^[\t\s]*then$/){
 		#There will be more added to accomodate other cases just for identation
 		$identation+=4;
+		
 	} elsif ($line =~ /^[\t\s]*done$|^[\t\s]*fi$/){
 		#There will be more added to accomodate other cases just for identation
 		$identation-=4;
     } else {
         # Lines we can't translate are turned into comments
         $line =  "#$line";
-        push (@translated, $line .$comment);
+        push (@translated, (" "x$identation).$line .$comment);
     }
 }
 #Subject to change
@@ -276,17 +308,18 @@ sub expr {
 
 sub dolla {
 	my $linech = $_[0];
-	if ($linech =~ m/\$\@/){
-		$temparg = "sys.argv[1:]";
-		$linech =~ s/"\$\@"//;
-	} elsif ($linech =~ m/\$\#/){
-		$temparg = "len(sys.argv[1:])";
-		$linech =~ s/"\$\#"//g;
-	} elsif ($linech =~ m/\$[0-9]/){
-		$temparg = "sys.argv[]";
+	#my $temparg = "";
+	if ($linech =~ m/[^\']*\$\@[^\']/){
+		$linech =~ s/[^\']\$\@[^\']/ sys\.argv\[1\:\] /;
+	} elsif ($linech =~ m/[^\']*\$#/){
+		$linech =~ s/[^\']\$\#[^\']/ len\(sys\.argv\[1\:\]\) /;
+		#$temparg = "len(sys.argv[1:])";
+		#print "$linech\n";
+	} elsif ($linech =~ m/[^\']*\$[0-9][^\']/){
 		$digit = $linech;
 		$digit =~ s/\D//g;
-		$linech =~ s/"\$[0-9]+"//;
+		$linech =~ s/[^\']\$[0-9][^\']/ sys\.argv\[$digit\] /;
+		#$temparg = "sys.argv[$digit]";
 	} 
 	return $linech;
 }
@@ -357,6 +390,7 @@ sub basicop {
             $newline = $newline.(join(" != ", @vars)).":";
 		} else {
 			$newline = $line;
+			#print "$newline\n";
 		}
 	return $newline
 }
