@@ -12,3 +12,4 @@ Date	  Start    Stop	   Activity	Comments
 					Working through series, fixing positional params 						and conditional statements in while if and for.
 24/9/15   22:28    2:30	   Debug	Finally got $#, $@ and $[0-9] working, most of 						the easy edge cases i think have been accounted 					for. Now i have to work on solving series.sh. 						Things left to do: 
 					Implement -o, -x, -q, fgrep, >>.
+25/9/15   2:03     5:20	   Coding/Debug ALL SUBSETS DONE. Have to work on edge cases and 						examples tomorrow!

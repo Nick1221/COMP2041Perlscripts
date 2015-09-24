@@ -6,7 +6,7 @@ then
 fi
 i=0
 number=$start
-file=./tmp.numbers
+file=./input
 rm -f $file
 while true
 do

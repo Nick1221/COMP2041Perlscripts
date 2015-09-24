@@ -21,6 +21,8 @@ while ($line = <>) {
 		$line =~ s/#.*//g;
 		$comment = "   #".$comment;
 	}
+
+
 	if ($line =~ /^#!/ && $. == 1) {
         print  "#!/usr/bin/python2.7 -u\n";
     } elsif ($line =~ /echo/) {
@@ -29,8 +31,17 @@ while ($line = <>) {
 		} else {
 			$quote = "'";
 		}
-       
-        if ($line =~ /\$+/){            
+		#print "$line\n";
+		if ($line =~ m/\>\>\$file/){
+			$line =~ s/\>\>\$file//;
+			$line =~ s/echo //;
+			if ($line =~ /\$/){
+				$line =~ s/\$//;
+			}
+			$line = "with open(file, 'a') as f: print >>f, ".$line;
+			#print "$line\n";
+#			$line = "with open(file, 'a') as f:"
+		} elsif ($line =~ /\$/){            
 			$line =~ s/echo[\s$quote]/print /;
 			$line =~ s{^\s+|\s+$}{}g;	#Removes trailing and leading whitespaces
 			my @vars = split/ /,$line;
@@ -157,7 +168,7 @@ while ($line = <>) {
 		    $line = $line.(join( ", ", @tempvar)).":";  
         }
 		push (@translated, (" "x$identation).$line .$comment);
-	} elsif ($line =~ /if test|elif test|if \[/){
+	} elsif ($line =~ /if test|elif test|if \[|if /){
 		#print "$line\n";
 			
 		#rint "Doing ifs\n";
@@ -165,15 +176,21 @@ while ($line = <>) {
             $line =~ s/if \[ //;
             $line =~ s/\]//;
             $newline1 = "if ";
-        } elsif ($line =~ /if test/){
+        } elsif ($line =~ /^if test/){
 			$line =~ s/if test //;
 			$newline1 = "if ";
 			#print "$line\n";
-		} elsif ($line =~ /elif test/){
+		} elsif ($line =~ /^elif test/){
 			$line =~ s/elif test //;
 			$newline1 = "elif ";
-		} 
+			$identation -= 4;
+			#print "$line\n";
+		} elsif ($line =~ /^if/){
+			$line =~ s/if //;
+			$newline1 = "if ";
+		}
 		$line = dolla($line);
+		#print "$line\n";
 		if ($line =~ m/-r/){
 			$import{"os"} = 1;
 			$line =~ s/-r//;
@@ -191,9 +208,26 @@ while ($line = <>) {
 			$line =~ s/-d//;
 			$line =~ s{^\s+|\s+$}{}g;
 			$newline = $newline1."os.path.isdir('".$line."'):";	
+		} elsif ($line =~ m/fgrep/){
+			#print "$line\n";
+			my @vars = split/ /,$line;
+			foreach my $ele (@vars){
+		    	if ($ele =~ m/^[^\$]/){
+					$ele = "'".$ele."'";
+				} elsif ($ele =~ m/^\$[0-9]+/) {
+					$import{"sys"} = 1;
+					$ele =~ s/\$/sys.argv[/;
+					$ele = $ele."]";
+				} else {
+					$ele =~ s/\$/str\(/;
+					$ele = $ele.")";
+				}
+			 }
+			$newline = $newline1."not subprocess.call([".join(" , ", @vars)."]):";
 		} elsif ($line =~ m/\-../){
+			#print "Running\n";
 			$line = basicop($line);
-			$newline = $newline1.$line;
+			$newline = $newline1.$line.":";
 		} else {
 			#print "$newline\n";
 			my @vars = split/=/, $line;
@@ -211,7 +245,7 @@ while ($line = <>) {
 		#print "$line\n";
 		#
 		#$line = "if ".$line;
-		push (@translated, (" "x$identation).$newline .$comment);
+		push (@translated, (" "x$identation).$newline.$comment);
     } elsif ($line =~ /^while/){
 		if ($line =~ /^while test/){		
 			$line =~ s/while test //;
@@ -220,11 +254,11 @@ while ($line = <>) {
 			$line =~ s/\]//;
 		} elsif ($line =~ /^while true/){
 			$import{"subprocess"} = 1;
-			$line =~ s/while true/not subprocess\.call\(\[\'true\'\]\)\:/;
+			$line =~ s/while true/not subprocess\.call\(\[\'true\'\]\)/;
 		}        
 		$line = dolla($line);
 		$line = basicop($line);
-		$line = "while ".$line;
+		$line = "while ".$line.":";
         push (@translated, (" "x$identation).$line.$comment);
 	} elsif ($line =~ /^[\t\s]*cd/){
 		$import{"os"} = 1;
@@ -257,8 +291,10 @@ while ($line = <>) {
 		$line = "subprocess.call([".(join(", ", @var))."])";
 		push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^[\t\s]*else$/){
+		$identation-=4;
 		$line =~ s/else/else:/;
-		push (@translated, $line .$comment);
+		push (@translated, (" "x$identation).$line .$comment);
+		$identation+=4;
 	} elsif ($line =~ /^#/){
 		push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^[\t\s]*$/){
@@ -267,10 +303,12 @@ while ($line = <>) {
         push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^[\t\s]*do$|^[\t\s]*then$/){
 		#There will be more added to accomodate other cases just for identation
-		$identation+=4;		
+		$identation+=4;
+		#print "Ident: $identation\n";		
 	} elsif ($line =~ /^[\t\s]*done$|^[\t\s]*fi$/){
 		#There will be more added to accomodate other cases just for identation
 		$identation-=4;
+		#print "Ident: $identation\n";
     } else {
         # Lines we can't translate are turned into comments
         $line =  "#$line";
@@ -330,69 +368,30 @@ sub dolla {
 sub basicop {
 	my $line = $_[0];
 	$newline = "";
-		if ($line =~ /\-le/){
-            my @vars = split/-le/, $line;
-            s{^\s+|\s+$}{}g foreach @vars;
-            foreach $ele (@vars){
-				if ($ele =~ m/^\$[^\#\@]/){
-		            $ele =~ s/\$//;
-		            $ele = "int(".$ele.")";
-				}
-            }
-            $newline = $newline.(join(" <= ", @vars)).":";
-        } elsif ($line =~ /\-ge/){
-			my @vars = split/-ge/, $line;
-            s{^\s+|\s+$}{}g foreach @vars;
-            foreach $ele (@vars){
-                if ($ele =~ m/^\$/){
-		            $ele =~ s/\$//;
-		            $ele = "int(".$ele.")";
-				}
-            }
-            $newline = $newline.(join(" >= ", @vars)).":";
-		} elsif ($line =~ /\-gt/){
-			my @vars = split/-gt/, $line;
-            s{^\s+|\s+$}{}g foreach @vars;
-            foreach $ele (@vars){
-                if ($ele =~ m/^\$/){
-		            $ele =~ s/\$//;
-		            $ele = "int(".$ele.")";
-				}
-            }
-            $newline = $newline.(join(" > ", @vars)).":";
-		} elsif ($line =~ /\-lt/){
-			my @vars = split/-lt/, $line;
-            s{^\s+|\s+$}{}g foreach @vars;
-            foreach $ele (@vars){
-                if ($ele =~ m/^\$/){
-		            $ele =~ s/\$//;
-		            $ele = "int(".$ele.")";
-				}
-            }
-            $newline = $newline.(join(" < ", @vars)).":";
-		} elsif ($line =~ /\-eq/){
-			my @vars = split/-eq/, $line;
-            s{^\s+|\s+$}{}g foreach @vars;
-            foreach $ele (@vars){
-                if ($ele =~ m/^\$/){
-		            $ele =~ s/\$//;
-		            $ele = "int(".$ele.")";
-				}
-            }
-            $newline = $newline.(join(" == ", @vars)).":";
-		} elsif ($line =~ /\-ne/){
-			my @vars = split/-ge/, $line;
-            s{^\s+|\s+$}{}g foreach @vars;
-            foreach $ele (@vars){
-                if ($ele =~ m/^\$/){
-		            $ele =~ s/\$//;
-		            $ele = "int(".$ele.")";
-				}
-            }
-            $newline = $newline.(join(" != ", @vars)).":";
-		} else {
-			$newline = $line;
-			#print "$newline\n";
-		}
+	my @vars = split/ /, $line;
+    s{^\s+|\s+$}{}g foreach @vars;
+	#$number -gt 100000000 -o  $number -lt -100000000 
+	foreach my $ele (@vars){
+		if ($ele =~ m/^\$[^\#\@]/){
+		    $ele =~ s/\$//;
+		    $ele = "int(".$ele.")";
+		} elsif ($ele =~ m/\-o/){
+			$ele = "or";
+		} elsif ($ele =~ m/\-lt/){
+			$ele = "<";
+		} elsif ($ele =~ m/\-le/){
+			$ele = "<=";
+		} elsif ($ele =~ m/\-ge/){
+			$ele = ">=";
+		} elsif ($ele =~ m/\-gt/){
+			$ele = ">";
+		} elsif ($ele =~ m/\-eq/){
+			$ele = "==";
+		} elsif ($ele =~ m/\-ne/){
+			$ele = "!=";
+		} 
+	}
+	$newline = join(" ", @vars);
+	#print "$newline\n";
 	return $newline
 }
