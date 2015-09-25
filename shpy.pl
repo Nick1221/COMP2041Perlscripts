@@ -66,7 +66,8 @@ while ($line = <>) {
 				#print "$words[1]\n";
                 $words[1]=~s/.*expr //;        
                 $words[1] = expr($words[1]);
-            }       	
+            }    
+			$line = join(" = ", @words);   	
 		} elsif ($words[1] =~ m/^\$\(\(/){
 			$words[1] =~ s/\$\(\(/expr /g;
 			$words[1] =~ s/\)\)//g;
@@ -74,6 +75,7 @@ while ($line = <>) {
                 $words[1]=~s/.*expr //;        
                 $words[1] = expr($words[1]);
             }
+			$line = join(" = ", @words);
 		} elsif ($words[1] =~ m/^\$\([^\)]*\)/){
 			$words[1] =~ s/\$\(/expr /g;
 			$words[1] =~ s/\)//g;
@@ -81,12 +83,24 @@ while ($line = <>) {
                 $words[1]=~s/.*expr //;        
                 $words[1] = expr($words[1]);
             }
+			$line = join(" = ", @words);
         } elsif ($words[1] =~ m/^\$[a-zA-Z]+/){
             $words[1] =~ s/\$//g;
+			$line = join(" = ", @words);
 		} elsif ($words[1] =~ m/\.\//){
 			$words[1] = "'".$words[1]."'";
+			$line = join(" = ", @words);
+		} elsif ($words[1] =~ m/sys\.arg/){
+            $line = join(" = ", @words);
+        } elsif ($words[1] =~ m/"[^"]*"/){
+            $line = join(" = ", @words);
+        } elsif ($words[1] =~ m/'[^']*'/){
+            $line = join(" = ", @words);
+        } else {
+			#print "$line\n";
+	        $line = join(" = \'", @words)."'";
 		}
-        $line = join(" = ", @words);
+        
         push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /for .* in/){
 		$line = basicop($line);
@@ -116,7 +130,7 @@ while ($line = <>) {
 	} elsif ($line =~ /if test|elif test|if \[|if /){
 		if ($line =~ /if *\[.*\]$/){
             $line =~ s/if \[ //;
-            $line =~ s/\]//;
+            $line =~ s/\]$//;
             $newline1 = "if ";
         } elsif ($line =~ /^if test/){
 			$line =~ s/if test //;
@@ -303,17 +317,26 @@ sub dolla {
 	if ($linech =~ m/[^\']*\$\@[^\']/){
 		$linech =~ s/[^\']\$\@[^\']/ sys\.argv\[1\:\] /;
 	} elsif ($linech =~ m/[^\']*\$\#/){
-		$linech =~ s/[^\']\$\#[^\']/ len\(sys\.argv\[1\:\]\) /;
+		$linech =~ s/[^\']\$\#[^\']/ len\(sys\.argv[1\:\]\) /;
 		#$temparg = "len(sys.argv[1:])";
 		#print "$linech\n";
 	} elsif ($linech =~ m/[']?\$[0-9]+[']?/){
 		$import{"sys"} = 1;
-		#print "$linech\n";
-		$digit = $linech;
-		$digit =~ s/[^0-9]//g;
-		#print "$digit\n";
+		my $digit = $linech;
+		my @digits = split/ /, $digit;
+		foreach $ele (@digits){
+           # print "$ele\n";
+		    if ($ele =~ /^\$/){
+                $ele =~ s/^\$//;
+                $digit = $ele;
+            } elsif ($ele =~ /[^\$]*\$/){
+                $ele =~ s/[^\$]*//;
+                $ele =~ s/\$//;
+                $digit = $ele;
+            }
+		}
 		$linech =~ s/[']?\$[0-9]+[']?/sys\.argv\[$digit\]/;
-		#$temparg = "sys.argv[$digit]";
+		#print "$linech\n";
 	} 
 	
 	#print "$linech\n";
@@ -379,6 +402,7 @@ sub echo {
 			$ele =~ s/"//g;
 			if ($ele =~ m/sys\.arg/){
 				$ele = '$'.$ele;
+				#$ele =~ s/\]//;
 			} 
 	    	if ($ele =~ m/^[^\$]/){
 				$ele = "'".$ele."'";
@@ -397,6 +421,9 @@ sub echo {
 		$line =~ s/echo /print /;		
 	} elsif ($line =~ /echo$/){
 		$line ="";
+	} else {
+		$line =~ s/echo[\s$quote]/print $quote/;	
+    	$line = $line . $quote;
 	}
 	return $line;
 }
