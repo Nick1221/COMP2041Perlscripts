@@ -1,0 +1,7 @@
+#!/bin/bash
+g=5;
+c=10;
+if [ $g -eq 5 && $c -eq 10 ]   
+then  
+    echo $g is 5 and $c is 10
+fi

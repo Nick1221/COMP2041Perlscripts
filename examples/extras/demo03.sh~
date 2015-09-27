@@ -1,0 +1,10 @@
+#!/bin/sh
+#Created by Nick Leung z5015489
+
+#Testing comments, this one counts
+thisisvar=60 #Hi
+notacomment="Shell is #bae"
+
+echo $thisisvar   #Printing single var
+echo $thisisvar $notacomment   #more vars
+echo "$thisisvar $thisisvar"  #should not change

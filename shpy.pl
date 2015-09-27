@@ -3,7 +3,7 @@
 # written by andrewt@cse.unsw.edu.au August 2015
 # as a starting point for COMP2041/9041 assignment 
 # http://cgi.cse.unsw.edu.au/~cs2041/assignment/shpy
-
+# Editted by Nick Leung z5015489
 
 my %import;
 $identation = 0;
@@ -17,12 +17,15 @@ while ($line = <>) {
 	}
 
 	#If there's a comment at the EOL, take it out and readd it afterwards
-	if ($line =~ m/[^"[^"]*"[^"]#/){ #Avoid the weird cases
+	if ($line =~ /#[^'"]+$/){ 	#Avoid the weird cases
 		my @comments = split/\#/,$line;
 		$comment = $comments[1];
-		$comment =~ s/^\s+|\s+$//g;
-		$line =~ s/#.*//g;
-		$comment = "   #".$comment;
+		$line =~ s/[\s\t]*#[^'"]+$//g;
+		if ($comments[0] =~ /[^\t\s]+/){
+			$comment = "	#".$comment;
+		} else {
+			$comment = "#".$comment;
+		}
 	}
 
 	if ($line =~ /^#!/ && $. == 1) {
@@ -31,17 +34,15 @@ while ($line = <>) {
 		$line = echo($line);
 		push (@translated, (" "x$identation).$line.$comment);
 	} elsif ($line =~ /^[\t\s]*ls|^[\t\s]*pwd|^[\t\s]*id|^[\t\s]*date/){
-		#This should change ls to subprocess. 
         #Changes whatever afterwards to join word by word.
         $import{"subprocess"} = 1;		
-		
 		if ($line =~ m/-las/){
 			$import{"sys"} = 1;
 			$line =~ s/^\s+|\s+$//g;
 			my @words = split /-las/,$line;
 			s{^\s+|\s+$}{}g foreach @words; 
 			my @vars = split/ /,$words[1];
-			s{^\s+|\s+$}{}g foreach @vars; #Removes trailing and leading whitespaces
+			s{^\s+|\s+$}{}g foreach @vars; 
 			$line =  "subprocess.call(['ls', '-las']";
 			foreach $ele (@vars){
 				if ($ele =~ m/^[\"]\$/){
@@ -59,7 +60,6 @@ while ($line = <>) {
     } elsif ($line =~ /[a-zA-Z0-9]+=.*/){
         #Handle Variable
         my @words = split /=/,$line;
-
 		if ($words[1] =~ /^\`.*\`/){
             $words[1] =~ s/\`//g;
             if ($words[1] =~ m/expr/){
@@ -84,7 +84,7 @@ while ($line = <>) {
                 $words[1] = expr($words[1]);
             }
 			$line = join(" = ", @words);
-        } elsif ($words[1] =~ m/^\$[a-zA-Z]+/){
+        } elsif ($words[1] =~ m/\$[a-zA-Z0-9]+/){
             $words[1] =~ s/\$//g;
 			$line = join(" = ", @words);
 		} elsif ($words[1] =~ m/\.\//){
@@ -105,7 +105,7 @@ while ($line = <>) {
 	} elsif ($line =~ /for .* in/){
 		$line = basicop($line);
 		my @object = split/in/, $line;
-		s{^\s+|\s+$}{}g foreach @object; #Removes trailing and leading whitespaces
+		s{^\s+|\s+$}{}g foreach @object;
 		$line = shift(@object)." in ";
      
 		my @tempvar = (split / /,shift(@object));
@@ -128,10 +128,17 @@ while ($line = <>) {
         }
 		push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /if test|elif test|if \[|if /){
-		if ($line =~ /if *\[.*\]$/){
-            $line =~ s/if \[ //;
-            $line =~ s/\]$//;
+		if ($line =~ /^if *\[.*\]$/){
+            $line =~ s/if //;
+			$line =~ s/\[ //g;
+            $line =~ s/\]//g;
             $newline1 = "if ";
+		} elsif ($line =~ /^elif *\[.*\]$/){
+            $line =~ s/elif //;
+			$line =~ s/\[ //g;
+            $line =~ s/\]//g;
+			$identation -= 4;
+            $newline1 = "elif ";
         } elsif ($line =~ /^if test/){
 			$line =~ s/if test //;
 			$newline1 = "if ";
@@ -204,8 +211,6 @@ while ($line = <>) {
 	} elsif ($line =~ /[^\)]+\)/){
 		my @var = split/\)/,$line;
 		my $var = $var[0];
-		
-		#print "$var\n";
 		$line = "if $case == $var:";
 		push (@translated, (" "x$identation).$line.$comment);
 		$line2 = echo($var[1]);
@@ -263,14 +268,11 @@ while ($line = <>) {
 	} elsif ($line =~ /^#/){
 		push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /^[\t\s]*$/){
-		#Fixing Empty line
 		$line = "";
         push (@translated, (" "x$identation).$line .$comment);
 	} elsif ($line =~ /do$|then$/){
-		#There will be more added to accomodate other cases just for identation
 		$identation+=4;
 	} elsif ($line =~ /^[\t\s]*done$|^[\t\s]*fi$|esac$/){
-		#There will be more added to accomodate other cases just for identation
 		$identation-=4;
     } else {
         # Lines we can't translate are turned into comments
@@ -297,11 +299,10 @@ sub expr {
     my $expr = $_[0];
     my @vars = split/ /, $expr;
     foreach $ele (@vars){
-		#print "$ele\n";
         if ($ele =~ /^\$.*/){
             $ele =~ s/\$/int(/;
             $ele = $ele.")";
-        } elsif ($ele =~ /^'[\*\/\+\-\%]'/){
+        } elsif ($ele =~ /^[']?[\*\/\+\-\%][']?/){
 			$ele =~ s/^'//;
 			$ele =~ s/'$//;
 		}
@@ -313,19 +314,15 @@ sub expr {
 #Convert $.
 sub dolla {
 	my $linech = $_[0];
-	#my $temparg = "";
 	if ($linech =~ m/[^\']*\$\@[^\']/){
 		$linech =~ s/[^\']\$\@[^\']/ sys\.argv\[1\:\] /;
 	} elsif ($linech =~ m/[^\']*\$\#/){
 		$linech =~ s/[^\']\$\#[^\']/ len\(sys\.argv[1\:\]\) /;
-		#$temparg = "len(sys.argv[1:])";
-		#print "$linech\n";
 	} elsif ($linech =~ m/[']?\$[0-9]+[']?/){
 		$import{"sys"} = 1;
 		my $digit = $linech;
 		my @digits = split/ /, $digit;
 		foreach $ele (@digits){
-           # print "$ele\n";
 		    if ($ele =~ /^\$/){
                 $ele =~ s/^\$//;
                 $digit = $ele;
@@ -336,10 +333,7 @@ sub dolla {
             }
 		}
 		$linech =~ s/[']?\$[0-9]+[']?/sys\.argv\[$digit\]/;
-		#print "$linech\n";
 	} 
-	
-	#print "$linech\n";
 	return $linech;
 }
 
@@ -349,7 +343,6 @@ sub basicop {
 	$newline = "";
 	my @vars = split/ /, $line;
     s{^\s+|\s+$}{}g foreach @vars;
-	#$number -gt 100000000 -o  $number -lt -100000000 
 	foreach my $ele (@vars){
 		if ($ele =~ m/^\$[^\#\@]/){
 		    $ele =~ s/\$//;
@@ -418,7 +411,11 @@ sub echo {
 	} elsif ($line =~ /echo '.*'/){
 		$line =~ s/echo /print /;
 	} elsif ($line =~ /echo ".*"/){
-		$line =~ s/echo /print /;		
+		$line =~ s/echo /print /;	
+	} elsif ($line =~ /echo -n/){
+		$line =~ s/echo -n//;
+		$words = $line;
+		$line = "sys.stdout.write($words)";	
 	} elsif ($line =~ /echo$/){
 		$line ="";
 	} else {

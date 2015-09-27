@@ -14,3 +14,4 @@ Date	  Start    Stop	   Activity	Comments
 					Implement -o, -x, -q, fgrep, >>.
 25/9/15   2:03     5:20	   Coding/Debug ALL SUBSETS DONE. Have to work on edge cases and 						examples tomorrow!
 25/9/15   22:20    4:26	   Debug	Added case, a lot of debugging, many cases have 					not been accounted for still.
+27/9/15   13:40    16:53   Debug	Added finishing touches, wrote demo and test 						scripts. Submitting
